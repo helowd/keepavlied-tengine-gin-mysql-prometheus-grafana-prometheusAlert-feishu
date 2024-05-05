@@ -1,7 +1,5 @@
 # keepavlied-tengine-gin-mysql-prometheus-grafana-prometheusAlert-feishu
 
-高可用网站服务与监控报警
-
 ## 目录
 <!-- vim-markdown-toc GFM -->
 
@@ -39,7 +37,7 @@
 
 2. 网站
 
-用gin + nodejs开发的一个开源网站https://github.com/flipped-aurora/gin-vue-admin，网站服务器选择tenginx，并挂载nfs共享目录来统一前端静态资源。Dockerfile制作镜像部署三个节点在dokcer中
+用gin + nodejs开发的一个开源网站`https://github.com/flipped-aurora/gin-vue-admin`，网站服务器选择tenginx，并挂载nfs共享目录来统一前端静态资源。Dockerfile制作镜像部署三个节点在dokcer中
 
 3. 负载均衡
 
@@ -634,7 +632,7 @@ track_script {
 
 ![](./images/vip_nginx_status.png)
 
-2. 访问http://192.168.31.254/nginx_restat
+2. 访问http://192.168.31.254/nginx_reqstat
 
 ![](./images/vip_nginx_reqstat.png)
 
@@ -935,7 +933,7 @@ scrape_configs:
 
 3. 配置数据源为上面搭建好的prometheus服务
 
-![](./images/grafana_datasorece.png)
+![](./images/grafana_datasourece.png)
 
 4. 按需创建dashboard（导入已有模板或自定义）
 
@@ -966,6 +964,8 @@ scrape_configs:
 ![](./images/feishu_mysql_status.png)
 
 ## todo
+tengine自定义dashbord
+
 mysql集群故障转移
 
 网站访问日志集成分析，elk搭建
