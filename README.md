@@ -1,5 +1,7 @@
 # keepavlied-tengine-gin-mysql-prometheus-grafana-prometheusAlert-feishu
 
+![](./images/architecture.png)
+
 ## 目录
 <!-- vim-markdown-toc GFM -->
 
@@ -19,8 +21,10 @@
     * [在机器192.168.31.200 loadbalancer-001上](#在机器19216831200-loadbalancer-001上)
     * [在192.168.31.201 loadbalancer-002上](#在19216831201-loadbalancer-002上)
     * [访问VIP对应路由查看暴露的指标](#访问vip对应路由查看暴露的指标)
+    * [通过VIP登录网站首页](#通过vip登录网站首页)
 * [六、监控平台搭建](#六监控平台搭建)
     * [指标采集：prometheus部署](#指标采集prometheus部署)
+        * [验证prometheus指标采集成功](#验证prometheus指标采集成功)
     * [可视化展示：grafana](#可视化展示grafana)
     * [告警：prometheusAlert + 飞书](#告警prometheusalert--飞书)
 * [todo](#todo)
@@ -640,6 +644,10 @@ track_script {
 
 ![](./images/vip_upstream_check.png)
 
+### 通过VIP登录网站首页
+
+![](./images/vip_web_index.png)
+
 ## 六、监控平台搭建
 
 ### 指标采集：prometheus部署
@@ -921,6 +929,10 @@ scrape_configs:
   }
 ]
 ```
+
+#### 验证prometheus指标采集成功
+
+![]()
 
 ### 可视化展示：grafana
 1. 安装并启动服务
