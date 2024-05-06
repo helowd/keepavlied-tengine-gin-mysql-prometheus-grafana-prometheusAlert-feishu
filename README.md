@@ -28,13 +28,18 @@
     * [指标采集：prometheus部署](#指标采集prometheus部署)
         * [验证prometheus指标采集成功](#验证prometheus指标采集成功)
     * [可视化展示：grafana](#可视化展示grafana)
+        * [tengine自定义指标仪表板设计](#tengine自定义指标仪表板设计)
+            * [负载均衡器指标](#负载均衡器指标)
+            * [web服务器指标](#web服务器指标)
+        * [mysql仪表台展示](#mysql仪表台展示)
+        * [node仪表板展示](#node仪表板展示)
     * [告警：prometheusAlert + 飞书](#告警prometheusalert--飞书)
 * [todo](#todo)
 
 <!-- vim-markdown-toc -->
 
 ## 前言
-本项目模拟企业网站服务的部署流程和常用技术手段，基于tengine代理和keepalived实现了网站服务的高并发性和高可用性，同时针对后端数据库完成了主从复制备份和读写分离结构部署，并借助tenginx的拓展模块（主动健康检查、指标统计等）、prometheus指标采集服务、grafana绘图服务以及开源告警消息转发系统prometheusAlert对集群的核心服务进行监控告警，并对一些关键指标（延迟、流量、错误、饱和度）做可观测性，以便及时暴露问题、预测风险、规避风险。
+本项目模拟企业网站服务的部署流程和常用技术手段，基于tengine代理和keepalived实现了网站服务的高并发性和高可用性，同时针对mysql数据库集群完成了主从复制备份和读写分离结构部署，并借助tenginx的拓展模块（主动健康检查、指标统计等）、prometheus指标采集服务、grafana绘图服务以及开源告警消息转发系统prometheusAlert对集群的核心服务进行监控告警，并对一些关键指标（延迟、流量、错误、饱和度）做可观测性，以便及时暴露问题、预测风险、规避风险。
 
 ## 技术选型说明
 1. 数据库
@@ -681,7 +686,7 @@ NGINX_SERVERS = [
 ]
 
 # 资源路径
-PATH = {"status": "nginx_status", "reqstat": "nginx_reqstat"}
+PATH = {"status": "nginx_status", "reqstat": "nginx_reqstat", "upstream": "upstream_check?format=json"}
 
 # 创建nginx status指标
 nginx_active_connections = Gauge('nginx_active_connections', 'Number of active connections in NGINX', labelnames=['server'])
@@ -725,6 +730,13 @@ nginx_http_other_detail_status = Gauge('nginx_http_other_detail_status', 'Total 
 nginx_http_ups_4xx = Gauge('nginx_http_ups_4xx', 'Total number of upstream 4xx responses in NGINX', labelnames=['server'])
 nginx_http_ups_5xx = Gauge('nginx_http_ups_5xx', 'Total number of upstream 5xx responses in NGINX', labelnames=['server'])
 
+# upstream_check指标
+total_servers = Gauge('total_servers', 'Total number of servers', labelnames=['server'])
+up_servers = Gauge('up_servers', 'Number of servers up', labelnames=['server'])
+down_servers = Gauge('down_servers', 'Number of servers down', labelnames=['server'])
+generation = Gauge('generation', 'Generation of servers', labelnames=['server'])
+server_up = Gauge('server_up', 'Whether server is up', ['index', 'upstream', 'name', 'type']) 
+
 
 def update_metrics():
     for server in NGINX_SERVERS:
@@ -735,12 +747,15 @@ def update_metrics():
             response_text = get_nginx_metrics(server, PATH['reqstat'])
             parse_nginx_reqstat(server, response_text)
 
+            response_json = get_nginx_metrics(server, PATH['upstream'])
+            parse_upstream_check(server, response_json)
+            
 
 def get_nginx_metrics(server, metric):
     try:
         response = requests.get(url=server["url"] + metric)
         if response.status_code == 200:
-            return response.text
+            return response.json() if metric == PATH['upstream'] else response.text
         else:
             print(f"Failed to fetch NGINX status: {response.status_code}")
     except Exception as e:
@@ -762,7 +777,7 @@ def parse_nginx_status(server, nginx_status):
         handled = int(accepted_handled_requests_time.group(2))
         requests = int(accepted_handled_requests_time.group(3))
         request_time = int(accepted_handled_requests_time.group(4))
-
+        
         nginx_accepted_connections.labels(server=server["name"]).set(accepted)
         nginx_handled_connections.labels(server=server["name"]).set(handled)
         nginx_total_requests.labels(server=server["name"]).set(requests)
@@ -788,7 +803,7 @@ def parse_nginx_reqstat(server, nginx_status):
     lines = nginx_status.strip().split('\n')
     for line in lines:
         kv, bytes_in, bytes_out, conn_total, req_total, http_2xx, http_3xx, http_4xx, http_5xx, http_other_status, rt, ups_req, ups_rt, ups_tries, http_200, http_206, http_302, http_304, http_403, http_404, http_416, http_499, http_500, http_502, http_503, http_504, http_508, http_other_detail_status, http_ups_4xx, http_ups_5xx = line.split(",")
-
+        
         nginx_kv.labels(server=server["name"]).set(1)
         nginx_bytes_in.labels(server=server["name"]).set(bytes_in)
         nginx_bytes_out.labels(server=server["name"]).set(bytes_out)
@@ -819,6 +834,18 @@ def parse_nginx_reqstat(server, nginx_status):
         nginx_http_other_detail_status.labels(server=server["name"]).set(http_other_detail_status)
         nginx_http_ups_4xx.labels(server=server["name"]).set(http_ups_4xx)
         nginx_http_ups_5xx.labels(server=server["name"]).set(http_ups_5xx)
+
+
+def parse_upstream_check(host, upstream_check):
+    servers_info = upstream_check.get("servers")
+
+    total_servers.labels(server=host['name']).set(servers_info.get('total'))
+    up_servers.labels(server=host['name']).set(servers_info.get('up'))
+    down_servers.labels(server=host['name']).set(servers_info.get('down'))
+    generation.labels(server=host['name']).set(servers_info.get('generation'))
+
+    for server in servers_info.get('server', []):
+        server_up.labels(str(server['index']), server['upstream'], server['name'], server['type']).set(1 if server['status'] == 'up' else 0)
 
 
 if __name__ == '__main__':
@@ -949,9 +976,67 @@ scrape_configs:
 
 ![](./images/grafana_datasource.png)
 
-4. 按需创建dashboard（导入已有模板或自定义）
+4. 按需创建dashboard（导入grafana社区模板或自定义出图）
+
+#### tengine自定义指标仪表板设计
+这里主要针对tengine负载均衡器以及后端web服务器的关键指标进行绘图展示
+
+![](./images/grafana_dashboards_tengine.png)
+
+##### 负载均衡器指标
+
+1. 过去五分钟的请求错误率（5xx和4xx）
+
+promql:`(rate(nginx_http_4xx[5m]) + rate(nginx_http_5xx[5m])) / rate(nginx_req_total[5m]) * 100`
+
+2. 丢弃的连接数，已 Dropped（丢弃）的连接数等于accept（接收）和 handled（处理）之间的差值，正常情况下断开的连接应为零。
+
+promql:`nginx_accepted_connections - nginx_handled_connections`
+
+3. 平均请求时间，单位为毫秒，处理每个请求的时间，Nginx 记录的请求时间度量记录了每个请求的处理时间，从读取第一个客户端字节到完成请求。较长的响应时间可能指向上游也就是服务器端的响应问题。
+
+promql:`nginx_request_time / nginx_req_total`
+
+4. nginx基本活动指标
+
+Accepts（接受），Handled（处理）和 Requests（请求）会随着计数器不断增加。Active（活动），Waiting（等待），Reading（读）和 Writing（写）随请求量的变化而变化。
+
+##### web服务器指标
+1. 服务器状态，观测后端服务器状态可用性，1为可用，0为不可用
+
+promql:`server_up`
+
+2. 错误状态码5xx率，诸如“ 502 错误的网关”或“ 503服务暂时不可用”之类的 5xx（服务器错误）代码是一个值得监控的指标，尤其是在总响应代码中所占的比例
+
+promql:`rate(nginx_http_5xx[5m]) / rate(nginx_ups_req[5m]) * 100`
+
+3. 每台服务器的活跃指标（Active connections），每个上游服务器的活动连接数可以帮助您验证反向代理是否在服务器组中正确的分配了工作。如果将 Nginx 用作负载均衡，若任何一台服务器处理的连接数存在显著偏差，可能表明该服务器正在努力及时处理请求，或者所配置的负载平衡方法(例如轮询或 IP 散列)对流量模式来说还存在优化空间。
+
+promql:`nginx_active_connections`
+
+
+#### mysql仪表台展示
 
 ![](./images/grafana_dashboards_mysql.png)
+
+mysql服务需要关注的关键指标：
+
+1. 延迟：慢查询
+
+2. 流量：写数量（Com_insert + Com_update + Com_delete）、读数量（Com_select）、语句总量（Questions）
+
+3. 错误：客户端连接 MySQL 失败了，或者语句发给 MySQL，执行的时候失败了，都需要有失败计数
+
+4. 饱和度
+
+当前连接数（Threads_connected）除以最大连接数（max_connections）可以得到连接数使用率，是一个需要重点监控的饱和度指标。
+
+另外就是 InnoDB Buffer pool 相关的指标，一个是 Buffer pool 的使用率，一个是 Buffer pool 的内存命中率。Buffer pool 是一块内存，专门用来缓存 Table、Index 相关的数据，提升查询性能。
+
+#### node仪表板展示
+主要关注处理器、内存、io、存储使用、网络流量等系统指标
+
+![](./images/grafana_dashboards_node.png)
 
 ### 告警：prometheusAlert + 飞书 
 
@@ -978,8 +1063,6 @@ scrape_configs:
 ![](./images/feishu_mysql_status.png)
 
 ## todo
-tengine自定义dashbord
-
 mysql集群故障转移
 
 网站访问日志集成分析，elk搭建
