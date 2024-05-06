@@ -9,6 +9,7 @@
 
 * [前言](#前言)
 * [技术选型说明](#技术选型说明)
+    * [版本](#版本)
 * [一、设计项目拓扑图](#一设计项目拓扑图)
 * [二、mysql主从集群搭建](#二mysql主从集群搭建)
     * [安装mysql，配置主从复制](#安装mysql配置主从复制)
@@ -57,6 +58,23 @@
 4. 指标采集、可观测性、告警 
 
 prometheus作为指标采集服务器主动拉取exporter端数据，用grafana对采集的指标进行绘图展示以及配合告警组件prometheusAlert设置告警规则告警给飞书
+
+5. 操作系统：centos-7.9.2009
+
+### 版本
+```
+grafana-v10.4.1 
+mysqld_exporter-0.15.1.linux-amd64 
+node_exporter-1.8.0.linux-amd64 
+prometheusAlert-v4.8.2  
+tengine-exporter
+tengine-3.0.0  
+prometheus-2.45.5.linux-amd64
+mysql-5.7.43
+gin-vue-admin-v2.6.2
+docker-26.1.1
+ProxySQL-2.5.3-89-g86ce115
+```
 
 ## 一、设计项目拓扑图 
 ![](./images/architecture.png)
