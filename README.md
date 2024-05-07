@@ -107,7 +107,6 @@ enforce-gtid-consistency=on
 mysql-slave-001配置文件：
 ```
 [mysqld]
-server_id=1
 server_id=2
 log_bin
 gtid-mode=on
@@ -117,7 +116,6 @@ enforce-gtid-consistency=on
 mysql-slave-002配置文件：
 ```
 [mysqld]
-server_id=1
 server_id=3
 log_bin
 gtid-mode=on
@@ -170,7 +168,7 @@ SHOW GLOBAL VARIABLES LIKE 'read_only';
 
 2. 添加mysql_servers表数据
 
-通过在mysql_servers表中添加、更新或删除记录，你可以动态地配置ProxySQL与后端MySQL服务器的连接和负载均衡设置。
+通过在mysql_servers表中添加、更新或删除记录，可以动态地配置ProxySQL与后端MySQL服务器的连接和负载均衡设置。
 ```
 mysql -uadmin -padmin -h127.0.0.1 -P6032 main
 
