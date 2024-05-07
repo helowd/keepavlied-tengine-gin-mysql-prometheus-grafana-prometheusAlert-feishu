@@ -32,7 +32,7 @@
         * [tengine自定义指标仪表板设计](#tengine自定义指标仪表板设计)
             * [负载均衡器指标](#负载均衡器指标)
             * [web服务器指标](#web服务器指标)
-        * [mysql仪表台展示](#mysql仪表台展示)
+        * [mysql仪表板展示](#mysql仪表板展示)
         * [node仪表板展示](#node仪表板展示)
     * [告警：prometheusAlert + 飞书](#告警prometheusalert--飞书)
 * [todo](#todo)
@@ -1033,7 +1033,7 @@ promql:`rate(nginx_http_ups_5xx[5m]) / rate(nginx_ups_req[5m]) * 100`
 promql:`nginx_active_connections`
 
 
-#### mysql仪表台展示
+#### mysql仪表板展示
 
 ![](./images/grafana_dashboards_mysql.png)
 
@@ -1081,6 +1081,8 @@ mysql服务需要关注的关键指标：
 ![](./images/feishu_mysql_status.png)
 
 ## todo
+ab压力测试
+
 mysql集群故障转移
 
 网站访问日志集成分析，elk搭建
